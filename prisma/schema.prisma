@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+enum CartStatus {
+  ACTIVE
+  COMPLETED
+  CANCELED
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+ email      String   @unique
+  password   String
+  role       String   @default("USER")
+  createdAt  DateTime @default(now())
+  superAdmin Boolean  @default(false)
+  events     Event[]  @relation("creatorEvents")
+  carts      Cart[]
+}
+
+model Event {
+  id        Int    @id @default(autoincrement())
+  title     String
+  description String?
+  location    String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  isPublic    Boolean @default(true)
+  createdById Int
+  createdBy   User    @relation("creatorEvents",  fields:[createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+}
+
+model Concert {
+  id           Int      @id @default(autoincrement())
+  title        String
+  date         DateTime
+  location     String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt  
+  reminderSent Boolean  @default(false)
+}
+
+model Merchandise {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  stock       Int
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  isActive    Boolean       @default(true)
+  cartItems   CartItem[]
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id])
+  status    CartStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id            Int         @id @default(autoincrement())
+  cartId        Int
+  cart          Cart        @relation(fields: [cartId], references: [id])
+  merchandiseId Int
+  merchandise   Merchandise @relation(fields: [merchandiseId], references: [id])
+  quantity      Int         @default(1)
+  unitPrice     Float       // snapshot do preço no momento da compra
+  createdAt     DateTime    @default(now())
+}

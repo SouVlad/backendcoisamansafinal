@@ -1,0 +1,30 @@
+{
+  "name": "projetocoisamansafix2",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/index.js",
+    "check:env": "node check_env.js",
+    "prisma:push": "dotenv -- npx prisma db push",
+    "prisma:generate": "dotenv -- npx prisma generate",
+    "prisma:migrate": "dotenv -- npx prisma migrate dev",
+    "prisma:validate": "dotenv -- npx prisma validate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.18.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
+    "express": "^4.22.1",
+    "googleapis": "^166.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.0.0",
+    "prisma": "^6.18.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
