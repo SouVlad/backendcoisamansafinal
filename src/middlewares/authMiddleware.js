@@ -9,7 +9,7 @@ export function optionalAuth(req, res, next) {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, JWT_SECRET);
       // Anexa o ID do usuário para uso posterior, se necessário
-      req.user = { id: decoded.userId, role: decoded.role, superAdmin: decoded.superAdmin };
+      req.user = { userId: decoded.userId, role: decoded.role, superAdmin: decoded.superAdmin };
     } catch (error) {
       // Ignora o erro, a rota é opcional
     }
@@ -25,14 +25,22 @@ export const requireAuth = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, JWT_SECRET);
 
-      req.user = await prisma.user.findUnique({
+      const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
         select: { id: true, email: true, role: true, superAdmin: true } // Não exponha a senha
       });
 
-      if (!req.user) {
+      if (!user) {
         return res.status(401).json({ message: 'Usuário não encontrado.' });
       }
+
+      // Normalizar para usar userId consistentemente
+      req.user = {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        superAdmin: user.superAdmin
+      };
 
       next();
     } catch (error) {

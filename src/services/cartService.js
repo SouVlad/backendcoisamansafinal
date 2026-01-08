@@ -1,8 +1,11 @@
 import prisma from '../prisma.js';
 
 const findOrCreateCart = async (userId) => {
-    let cart = await prisma.cart.findUnique({
-        where: { userId },
+    let cart = await prisma.cart.findFirst({
+        where: { 
+            userId,
+            status: 'ACTIVE'
+        },
     });
 
     if (!cart) {
@@ -15,9 +18,11 @@ const findOrCreateCart = async (userId) => {
 };
 
 export const findCartByUserId = async (userId) => {
-    const cart = await findOrCreateCart(userId);
-    return prisma.cart.findUnique({
-        where: { id: cart.id },
+    const cart = await prisma.cart.findFirst({
+        where: { 
+            userId,
+            status: 'ACTIVE'
+        },
         include: {
             items: {
                 include: {
@@ -26,6 +31,20 @@ export const findCartByUserId = async (userId) => {
             },
         },
     });
+
+    // Se não existe carrinho, retorna um carrinho vazio
+    if (!cart) {
+        return {
+            id: null,
+            userId,
+            status: 'ACTIVE',
+            items: [],
+            createdAt: null,
+            updatedAt: null
+        };
+    }
+
+    return cart;
 };
 
 export const addItem = async (userId, merchandiseId, quantity) => {
@@ -44,33 +63,55 @@ export const addItem = async (userId, merchandiseId, quantity) => {
     });
 
     if (existingItem) {
-        // Atualiza a quantidade se o item já existe
+        const newQuantity = existingItem.quantity + quantity;
+        if (merchandise.stock < newQuantity - existingItem.quantity) {
+            throw new Error('Stock insuficiente para esta quantidade total.');
+        }
+        
         await prisma.cartItem.update({
             where: { id: existingItem.id },
-            data: { quantity: existingItem.quantity + quantity },
+            data: { quantity: newQuantity },
+        });
+        
+        await prisma.merchandise.update({
+            where: { id: merchandiseId },
+            data: { stock: { decrement: quantity } },
         });
     } else {
-        // Cria um novo item no carrinho
         await prisma.cartItem.create({
             data: {
                 cartId: cart.id,
                 merchandiseId,
                 quantity,
+                unitPrice: merchandise.price,
             },
         });
+        
+        await prisma.merchandise.update({
+            where: { id: merchandiseId },
+            data: { stock: { decrement: quantity } },
+        });
     }
-
-    // Reduz o estoque (idealmente, isso deveria ser feito em uma transação)
-    await prisma.merchandise.update({
-        where: { id: merchandiseId },
-        data: { stock: { decrement: quantity } },
-    });
 
     return findCartByUserId(userId);
 };
 
 export const removeItem = async (userId, itemId) => {
-    // Adicionar lógica para devolver o item ao estoque se necessário
+    const cartItem = await prisma.cartItem.findUnique({
+        where: { id: itemId },
+        include: { merchandise: true }
+    });
+    
+    if (!cartItem) {
+        throw new Error('Item não encontrado no carrinho.');
+    }
+    
+    // Devolver o stock ao merchandise
+    await prisma.merchandise.update({
+        where: { id: cartItem.merchandiseId },
+        data: { stock: { increment: cartItem.quantity } },
+    });
+    
     await prisma.cartItem.delete({ where: { id: itemId } });
     return findCartByUserId(userId);
 };
